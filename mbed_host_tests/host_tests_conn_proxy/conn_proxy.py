@@ -24,6 +24,7 @@ from serial import Serial, SerialException
 from mbed_host_tests import host_tests_plugins
 from mbed_host_tests.host_tests_plugins.host_test_plugins import HostTestPluginBase
 from conn_proxy_logger import HtrunLogger
+from time import time
 
 
 class SerialConnectorPrimitive(object):
@@ -186,6 +187,8 @@ def conn_process(event_queue, dut_event_queue, prn_lock, config):
     logger.prn_inf("sending preamble '%s'..."% sync_uuid)
     connector.write("mbed" * 10, log=True)
     connector.write_kv('__sync', sync_uuid)
+    sync_timestamp = time()
+    sync_threshold = 3
 
     while True:
 
@@ -247,5 +250,15 @@ def conn_process(event_queue, dut_event_queue, prn_lock, config):
                             logger.prn_err("found faulty SYNC in stream: {{%s;%s}}, ignored..."% (key, value))
                     else:
                         logger.prn_wrn("found KV pair in stream: {{%s;%s}}, ignoring..."% (key, value))
+               
+        if not sync_uuid_discovered:
+            logger.prn_inf("in loop")
+            check_timestamp = time() 
+            diff_time = check_timestamp - sync_timestamp
+            logger.prn_inf("diff_time: %s"% (diff_time))
+            if diff_time > sync_threshold:
+                logger.prn_inf("sending __sync")
+                connector.write_kv('__sync', sync_uuid)
+                sync_timestamp = time()
 
     return 0
