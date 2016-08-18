@@ -125,6 +125,12 @@ def conn_process(event_queue, dut_event_queue, config):
     # Some RXD data buffering so we can show more text per log line
     print_data = str()
 
+    def __notify_conn_lost():
+        error_msg = connector.error()
+        connector.finish()
+        event_queue.put(('__notify_conn_lost', error_msg, time()))
+
+
     def __send_sync(timeout=None):
         sync_uuid = str(uuid.uuid4())
         # Handshake, we will send {{sync;UUID}} preamble and wait for mirrored reply
@@ -132,11 +138,20 @@ def conn_process(event_queue, dut_event_queue, config):
             logger.prn_inf("resending new preamble '%s' after %0.2f sec"% (sync_uuid, timeout))
         else:
             logger.prn_inf("sending preamble '%s'"% sync_uuid)
-        connector.write_kv('__sync', sync_uuid)
-        return sync_uuid
+        if connector.write_kv('__sync', sync_uuid):
+            return sync_uuid
+        else:
+            return None
 
     # Send simple string to device to 'wake up' greentea-client k-v parser
-    connector.write("mbed" * 10, log=True)
+    wake_up_string = "mbed" * 10
+    written_wake_up_string = connector.write(wake_up_string, log=True)
+
+    # Failed to write 'wake up' string, exit conn_process
+    if written_wake_up_string != wake_up_string:
+        __notify_conn_lost()
+        return 0
+        
 
     # Sync packet management allows us to manipulate the way htrun sends __sync packet(s)
     # With current settings we can force on htrun to send __sync packets in this manner:
@@ -151,25 +166,36 @@ def conn_process(event_queue, dut_event_queue, config):
     if sync_behavior > 0:
         # Sending up to 'n' __sync packets
         logger.prn_inf("sending up to %s __sync packets (specified with --sync=%s)"% (sync_behavior, sync_behavior))
-        sync_uuid_list.append(__send_sync())
-        sync_behavior -= 1
+        sync_uuid = __send_sync()
+
+        if sync_uuid:
+            sync_uuid_list.append(sync_uuid)
+            sync_behavior -= 1
+        else:
+            __notify_conn_lost()
+            return 0
     elif sync_behavior == 0:
         # No __sync packets
         logger.prn_wrn("skipping __sync packet (specified with --sync=%s)"% sync_behavior)
     else:
         # Send __sync until we go reply
         logger.prn_inf("sending multiple __sync packets (specified with --sync=%s)"% sync_behavior)
-        sync_uuid_list.append(__send_sync())
-        sync_behavior -= 1
+
+        sync_uuid = __send_sync()
+
+        if sync_uuid:
+            sync_uuid_list.append(sync_uuid)
+            sync_behavior -= 1
+        else:
+            __notify_conn_lost()
+            return 0
 
     loop_timer = time()
     while True:
 
         # Check if connection is lost to serial
         if not connector.connected():
-            error_msg = connector.error()
-            connector.finish()
-            event_queue.put(('__notify_conn_lost', error_msg, time()))
+            __notify_conn_lost()
             break
 
         # Send data to DUT
@@ -183,7 +209,9 @@ def conn_process(event_queue, dut_event_queue, config):
                 logger.prn_inf("received special even '%s' value='%s', finishing"% (key, value))
                 connector.finish()
                 return 0
-            connector.write_kv(key, value)
+            if not connector.write_kv(key, value):
+                __notify_conn_lost()
+                break
 
         data = connector.read(2048)
         if data:
@@ -235,8 +263,14 @@ def conn_process(event_queue, dut_event_queue, config):
             if sync_behavior != 0:
                 time_to_sync_again = time() - loop_timer
                 if time_to_sync_again > sync_timeout:
-                    sync_uuid_list.append(__send_sync(timeout=time_to_sync_again))
-                    sync_behavior -= 1
-                    loop_timer = time()
+                    sync_uuid = __send_sync(timeout=time_to_sync_again)
+
+                    if sync_uuid:
+                        sync_uuid_list.append(sync_uuid)
+                        sync_behavior -= 1
+                        loop_timer = time()
+                    else:
+                        __notify_conn_lost()
+                        break
 
     return 0
