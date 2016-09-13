@@ -116,7 +116,7 @@ class DefaultTestSelector(DefaultTestSelectorBase):
         @return Return self.TestResults.RESULT_* enum
         """
         result = None
-        timeout_duration = 10       # Default test case timeout
+        timeout_duration = 60       # Default test case timeout
         event_queue = Queue()       # Events from DUT to host
         dut_event_queue = Queue()   # Events from host to DUT {k;v}
 
