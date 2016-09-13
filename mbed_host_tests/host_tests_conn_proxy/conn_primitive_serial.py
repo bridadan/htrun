@@ -29,14 +29,15 @@ class SerialConnectorPrimitive(ConnectorPrimitive):
         ConnectorPrimitive.__init__(self, name)
         self.port = port
         self.baudrate = int(baudrate)
-        self.timeout = 0
+        self.read_timeout = 0
+        self.write_timeout = 5
         self.config = config
         self.target_id = self.config.get('target_id', None)
         self.serial_pooling = config.get('serial_pooling', 60)
         self.forced_reset_timeout = config.get('forced_reset_timeout', 1)
 
         # Values used to call serial port listener...
-        self.logger.prn_inf("serial(port=%s, baudrate=%d, timeout=%s)"% (self.port, self.baudrate, self.timeout))
+        self.logger.prn_inf("serial(port=%s, baudrate=%d, timeout=%s, write_timeout=%d)"% (self.port, self.baudrate, self.read_timeout, self.write_timeout))
 
         # Check if serial port for given target_id changed
         # If it does we will use new port to open connections and make sure reset plugin
@@ -51,12 +52,13 @@ class SerialConnectorPrimitive(ConnectorPrimitive):
             self.port = serial_port
 
         try:
-            self.serial = Serial(self.port, baudrate=self.baudrate, timeout=self.timeout)
+            self.serial = Serial(self.port, baudrate=self.baudrate, timeout=self.read_timeout, write_timeout=self.write_timeout)
         except SerialException as e:
             self.serial = None
-            self.LAST_ERROR = "connection lost, serial.Serial(%s. %d, %d): %s"% (self.port,
+            self.LAST_ERROR = "connection lost, serial.Serial(%s, %d, %d, %d): %s"% (self.port,
                 self.baudrate,
-                self.timeout,
+                self.read_timeout,
+                self.write_timeout,
                 str(e))
             self.logger.prn_err(str(e))
         else:
