@@ -18,6 +18,7 @@ limitations under the License.
 
 import re
 import uuid
+import os
 from time import time
 from Queue import Empty as QueueEmpty   # Queue here refers to the module, not a class
 from mbed_host_tests.host_tests_logger import HtrunLogger
@@ -136,6 +137,7 @@ def conn_process(event_queue, dut_event_queue, config):
     sync_timeout = config.get('sync_timeout', 1.0)
     conn_resource = config.get('conn_resource', 'serial')
     last_sync = False
+    d_serial_output_file = config.get('d_serial_output_file')
 
     # Create connector instance with proper configuration
     connector = conn_primitive_factory(conn_resource, config, event_queue, logger)
@@ -173,7 +175,7 @@ def conn_process(event_queue, dut_event_queue, config):
         # Failed to write 'wake up' string, exit conn_process
         __notify_conn_lost()
         return 0
-        
+
 
     # Sync packet management allows us to manipulate the way htrun sends __sync packet(s)
     # With current settings we can force on htrun to send __sync packets in this manner:
@@ -235,8 +237,11 @@ def conn_process(event_queue, dut_event_queue, config):
                 break
 
         # Since read is done every 0.2 sec, with maximum baud rate we can receive 2304 bytes in one read in worst case.
-        data = connector.read(2304)
+        data = connector.read(5000)
         if data:
+            if d_serial_output_file:
+                with open (os.path.normpath(d_serial_output_file), 'a') as log_file:
+                    log_file.write(data)
             # Stream data stream KV parsing
             print_lines = kv_buffer.append(data)
             for line in print_lines:

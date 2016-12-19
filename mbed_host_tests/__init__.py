@@ -314,6 +314,11 @@ def init_host_test_cli_params():
                       default=None,
                       help='Save target serial output to this file.')
 
+    parser.add_option('', '--d-serial-output-file',
+                      dest='d_serial_output_file',
+                      default=None,
+                      help='Save target serial output to this file.')
+
     parser.add_option('', '--compare-log',
                       dest='compare_log',
                       default=None,
