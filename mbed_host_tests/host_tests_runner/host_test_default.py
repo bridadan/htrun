@@ -167,6 +167,7 @@ class DefaultTestSelector(DefaultTestSelectorBase):
                 "sync_behavior" : self.options.sync_behavior,
                 "platform_name" : self.options.micro,
                 "image_path" : self.mbed.image_path,
+                "d_serial_output_file": self.options.d_serial_output_file
             }
 
             if self.options.global_resource_mgr:
