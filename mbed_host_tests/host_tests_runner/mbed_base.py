@@ -18,6 +18,8 @@ Author: Przemyslaw Wirkus <Przemyslaw.Wirkus@arm.com>
 """
 
 import json
+import os
+import mbed_lstools
 from time import sleep
 from mbed_host_tests import DEFAULT_BAUD_RATE
 from sets import Set
@@ -84,6 +86,17 @@ class Mbed:
         """! Closure for copy_image_raw() method.
         @return Returns result from copy plugin
         """
+
+        def get_remount_count(disk_path):
+            files_on_disk = [x.upper() for x in os.listdir(disk_path)]
+            if 'DETAILS.TXT' in files_on_disk:
+                with open(os.path.join(disk_path, 'DETAILS.TXT'), 'r') as details_txt:
+                    for line in details_txt.readlines():
+                        if 'Remount count:' in line:
+                            return int(line.replace('Remount count: ', ''))
+
+            return None
+
         # Set-up closure environment
         if not image_path:
             image_path = self.image_path
@@ -96,13 +109,13 @@ class Mbed:
         if not target_id:
             target_id = self.target_id
 
+        initial_remount_count = get_remount_count(disk)
+
         # Call proper copy method
         result = self.copy_image_raw(image_path, disk, copy_method, port)
         sleep(self.program_cycle_s)
 
         if target_id:
-            import mbed_lstools
-            import os
             bad_files = Set(['ASSERT.TXT', 'FAIL.TXT'])
 
             for i in range(120):
@@ -134,6 +147,12 @@ class Mbed:
                             result = False
                             if 'ASSERT.TXT' in common_items:
                                 raise Exception('ASSERT.TXT found!')
+
+                        if not initial_remount_count is None:
+                            new_remount_count = get_remount_count(disk)
+                            if new_remount_count == initial_remount_count:
+                                raise Exception('Failed to remount! Remount count stayed at ' + initial_remount_count)
+
                         break
                 sleep(0.5)
         
