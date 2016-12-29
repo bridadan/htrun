@@ -96,6 +96,44 @@ class Mbed:
         # Call proper copy method
         result = self.copy_image_raw(image_path, disk, copy_method, port)
         sleep(self.program_cycle_s)
+
+        if target_id:
+            import mbed_lstools
+            import os
+            bad_files = Set(['ASSERT.TXT', 'FAIL.TXT'])
+
+            for i in range(120):
+                # mbed_lstools.create() should be done inside the loop. Otherwise it will loop on same data.
+                mbeds = mbed_lstools.create()
+                mbeds_by_tid = mbeds.list_mbeds_by_targetid([target_id])   # key: target_id, value mbedls_dict()
+                if target_id in mbeds_by_tid:
+                    if 'mount_point' in mbeds_by_tid[target_id] and mbeds_by_tid[target_id]['mount_point']:
+                        items = Set([x.upper() for x in os.listdir(mbeds_by_tid[target_id]['mount_point'])])
+                        common_items = bad_files.intersection(items)
+                        for common_item in common_items:
+                            full_path = os.path.join(mbeds_by_tid[target_id]['mount_point'], common_item)
+                            print "FS_ERROR: Found %s"% (full_path)
+                            bad_file_contents = "[failed to read bad file]"
+                            try:
+                                with open(full_path, "r") as bad_file:
+                                    bad_file_contents = bad_file.read()
+                            except IOError as error:
+                                print "ERROR opening '%s': %s" % (full_path, error)
+                            print "FS_ERROR: Contents\n%s"% (bad_file_contents)
+                            if common_item != 'FAIL.TXT':
+                                try:
+                                    os.remove(full_path)
+                                except OSError as error:
+                                    print "ERROR removing '%s': %s" % (full_path, error)
+                                
+                        print "common_items: %s"% (common_items)
+                        if common_items:
+                            result = False
+                            if 'ASSERT.TXT' in common_items:
+                                raise Exception('ASSERT.TXT found!')
+                        break
+                sleep(0.5)
+        
         return result
 
     def copy_image_raw(self, image_path=None, disk=None, copy_method=None, port=None):
