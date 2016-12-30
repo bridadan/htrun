@@ -87,15 +87,19 @@ class Mbed:
         @return Returns result from copy plugin
         """
 
-        def get_remount_count(disk_path):
-            files_on_disk = [x.upper() for x in os.listdir(disk_path)]
-            if 'DETAILS.TXT' in files_on_disk:
-                with open(os.path.join(disk_path, 'DETAILS.TXT'), 'r') as details_txt:
-                    for line in details_txt.readlines():
-                        if 'Remount count:' in line:
-                            return int(line.replace('Remount count: ', ''))
-
-            return None
+        def get_remount_count(disk_path, tries=3):
+            for cur_try in range(1, tries + 1):
+                try:
+                    files_on_disk = [x.upper() for x in os.listdir(disk_path)]
+                    if 'DETAILS.TXT' in files_on_disk:
+                        with open(os.path.join(disk_path, 'DETAILS.TXT'), 'r') as details_txt:
+                            for line in details_txt.readlines():
+                                if 'Remount count:' in line:
+                                    return int(line.replace('Remount count: ', ''))
+                except OSError as e:
+                    print 'Failed to get remount count due to OSError. Retrying in 3 seconds (try %s of %s)' % (cur_try, tries)
+                    print e
+                    sleep(1)
 
         # Set-up closure environment
         if not image_path:
@@ -124,6 +128,12 @@ class Mbed:
                 mbeds_by_tid = mbeds.list_mbeds_by_targetid([target_id])   # key: target_id, value mbedls_dict()
                 if target_id in mbeds_by_tid:
                     if 'mount_point' in mbeds_by_tid[target_id] and mbeds_by_tid[target_id]['mount_point']:
+                        if not initial_remount_count is None:
+                            new_remount_count = get_remount_count(disk)
+                            if not new_remount_count is None and new_remount_count == initial_remount_count:
+                                sleep(0.5)
+                                continue
+
                         items = Set([x.upper() for x in os.listdir(mbeds_by_tid[target_id]['mount_point'])])
                         common_items = bad_files.intersection(items)
                         for common_item in common_items:
@@ -141,18 +151,12 @@ class Mbed:
                                     os.remove(full_path)
                                 except OSError as error:
                                     print "ERROR removing '%s': %s" % (full_path, error)
-                                
+
                         print "common_items: %s"% (common_items)
                         if common_items:
                             result = False
                             if 'ASSERT.TXT' in common_items:
                                 raise Exception('ASSERT.TXT found!')
-
-                        if not initial_remount_count is None:
-                            new_remount_count = get_remount_count(disk)
-                            if new_remount_count == initial_remount_count:
-                                raise Exception('Failed to remount! Remount count stayed at ' + str(initial_remount_count))
-
                         break
                 sleep(0.5)
         
