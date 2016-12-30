@@ -79,7 +79,7 @@ class Mbed:
                 print "MBED: Test configuration JSON Unexpected error:", str(e)
                 raise
 
-    def copy_image(self, image_path=None, disk=None, copy_method=None, port=None):
+    def copy_image(self, image_path=None, disk=None, copy_method=None, port=None, target_id=None):
         """! Closure for copy_image_raw() method.
         @return Returns result from copy plugin
         """
@@ -92,6 +92,8 @@ class Mbed:
             copy_method = self.copy_method
         if not port:
             port = self.port
+        if not target_id:
+            target_id = self.target_id
 
         # Call proper copy method
         result = self.copy_image_raw(image_path, disk, copy_method, port)
