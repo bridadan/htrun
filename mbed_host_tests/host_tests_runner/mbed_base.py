@@ -151,7 +151,7 @@ class Mbed:
                         if not initial_remount_count is None:
                             new_remount_count = get_remount_count(disk)
                             if new_remount_count == initial_remount_count:
-                                raise Exception('Failed to remount! Remount count stayed at ' + initial_remount_count)
+                                raise Exception('Failed to remount! Remount count stayed at ' + str(initial_remount_count))
 
                         break
                 sleep(0.5)
