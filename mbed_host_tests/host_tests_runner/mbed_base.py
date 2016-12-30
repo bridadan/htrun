@@ -20,6 +20,7 @@ Author: Przemyslaw Wirkus <Przemyslaw.Wirkus@arm.com>
 import json
 from time import sleep
 from mbed_host_tests import DEFAULT_BAUD_RATE
+from sets import Set
 import mbed_host_tests.host_tests_plugins as ht_plugins
 
 
