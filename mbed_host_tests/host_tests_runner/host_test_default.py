@@ -486,8 +486,13 @@ class DefaultTestSelector(DefaultTestSelectorBase):
             if self.options.skip_flashing:
                 self.logger.prn_inf("copy image onto target... SKIPPED!")
             else:
-                self.logger.prn_inf("copy image onto target...")
-                result = self.mbed.copy_image()
+                result = None
+                for i in range(1, 6):
+                    self.logger.prn_inf("copy image onto target (try %s out of 5)..." % str(i))
+                    result = self.mbed.copy_image()
+                    if result:
+                        break
+
                 if not result:
                     result = self.RESULT_IOERR_COPY
                     return self.get_test_result_int(result)
