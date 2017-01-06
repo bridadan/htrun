@@ -18,6 +18,7 @@ Author: Przemyslaw Wirkus <Przemyslaw.Wirkus@arm.com>
 """
 
 import json
+import os
 from time import sleep
 from mbed_host_tests import DEFAULT_BAUD_RATE
 import mbed_host_tests.host_tests_plugins as ht_plugins
@@ -83,6 +84,18 @@ class Mbed:
         """! Closure for copy_image_raw() method.
         @return Returns result from copy plugin
         """
+
+        def print_debug_txt(disk_path):
+            debug_info_file_path = os.path.join(disk_path, 'DEBUG.TXT')
+            if os.path.exists(debug_info_file_path):
+                debug_info = None
+                try:
+                    with open(debug_info_file_path, 'r') as debug_info_file:
+                        debug_info = debug_info_file.read()
+                    print "DEBUG.TXT contents:\n%s\n" % debug_info
+                except IOError as e:
+                    print "Failed to open DEBUG.TXT: %s" % (str(e))
+
         # Set-up closure environment
         if not image_path:
             image_path = self.image_path
@@ -92,6 +105,9 @@ class Mbed:
             copy_method = self.copy_method
         if not port:
             port = self.port
+
+        # Print DEBUG.TXT
+        print_debug_txt(disk)
 
         # Call proper copy method
         result = self.copy_image_raw(image_path, disk, copy_method, port)
