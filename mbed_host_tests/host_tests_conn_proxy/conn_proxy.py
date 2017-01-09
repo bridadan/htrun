@@ -29,9 +29,11 @@ class KiViBufferWalker():
     """! Simple auxiliary class used to walk through a buffer and search for KV tokens """
     def __init__(self):
         self.KIVI_REGEX = r"\{\{([\w\d_-]+);([^\}]+)\}\}"
+        self.OVERFLOW_REGEX = r"<DAPLink:Overflow>"
         self.buff = str()
         self.kvl = []
         self.re_kv = re.compile(self.KIVI_REGEX)
+        self.re_ovfl = re.compile(self.OVERFLOW_REGEX)
 
     def append(self, payload):
         """! Append stream buffer with payload and process. Returns non-KV strings"""
@@ -43,23 +45,29 @@ class KiViBufferWalker():
         discarded = []
 
         for line in lines:
-            m = self.re_kv.search(line)
+            m = self.re_ovfl.search(line)
             if m:
-                (key, value) = m.groups()
-                self.kvl.append((key, value, time()))
-                line = line.strip()
-                match = m.group(0)
-                pos = line.find(match)
-                before = line[:pos]
-                after = line[pos + len(match):]
-                if len(before) > 0:
-                    discarded.append(before)
-                if len(after) > 0:
-                    # not a K,V pair part
-                    discarded.append(after)
+                # If overflow detected, throw away the rest and restart the test
+                self.kvl.append(('__reset_timeout', 1, time()))
+                self.kvl.append(('__reset_dut', 1, time()))
             else:
-                # not a K,V pair
-                discarded.append(line)
+                m = self.re_kv.search(line)
+                if m:
+                    (key, value) = m.groups()
+                    self.kvl.append((key, value, time()))
+                    line = line.strip()
+                    match = m.group(0)
+                    pos = line.find(match)
+                    before = line[:pos]
+                    after = line[pos + len(match):]
+                    if len(before) > 0:
+                        discarded.append(before)
+                    if len(after) > 0:
+                        # not a K,V pair part
+                        discarded.append(after)
+                else:
+                    # not a K,V pair
+                    discarded.append(line)
         return discarded
 
     def search(self):

@@ -222,33 +222,23 @@ class DefaultTestSelector(DefaultTestSelectorBase):
                 return elapsed_time, (key, value, timestamp)
 
         p = start_conn_process()
-
-        conn_process_started = False
-        try:
-            (key, value, timestamp) = event_queue.get(timeout=self.options.process_start_timeout)
-
-            if key == '__conn_process_start':
-                conn_process_started = True
-            else:
-                self.logger.prn_err("First expected event was '__conn_process_start', received '%s' instead"% key)
-
-        except QueueEmpty:
-            self.logger.prn_err("Conn process failed to start in %f sec"% self.options.process_start_timeout)
-
-        if not conn_process_started:
-            p.terminate()
-            return self.RESULT_TIMEOUT
-
         start_time = time()
 
         try:
             consume_preamble_events = True
+            conn_process_started = False
+            event_queue_timeout = self.options.process_start_timeout
 
             while (time() - start_time) < timeout_duration:
                 # Handle default events like timeout, host_test_name, ...
                 try:
-                    (key, value, timestamp) = event_queue.get(timeout=1)
+                    (key, value, timestamp) = event_queue.get(timeout=event_queue_timeout)
                 except QueueEmpty:
+                    if not conn_process_started:
+                        self.logger.prn_err("Conn process failed to start in %f sec"% self.options.process_start_timeout)
+                        result = self.RESULT_TIMEOUT
+                        p.terminate()
+                        event_queue.put(('__exit_event_queue', 0, time()))
                     continue
 
                 # Write serial output to the file if specified in options.
@@ -326,6 +316,9 @@ class DefaultTestSelector(DefaultTestSelectorBase):
                         self.logger.prn_inf("%s received"% (key))
                         callbacks__exit_event_queue = True
                         break
+                    elif key == '__conn_process_start':
+                        conn_process_started = True
+                        event_queue_timeout = 1
                     elif key.startswith('__'):
                         # Consume other system level events
                         pass
@@ -346,6 +339,9 @@ class DefaultTestSelector(DefaultTestSelectorBase):
                         # or if value is None, value will be retrieved from HostTest.result() method
                         self.logger.prn_inf("%s(%s)"% (key, str(value)))
                         result = value
+                    elif key == '__reset_timeout':
+                        self.logger.prn_inf("Resetting test timeout.")
+                        start_time = time()
                     elif key == '__reset_dut':
                         # Disconnect to avoid connection lost event
                         dut_event_queue.put(('__host_test_finished', True, time()))
@@ -364,6 +360,9 @@ class DefaultTestSelector(DefaultTestSelectorBase):
                                                                    DefaultTestSelector.RESET_TYPE_SW_RST])))
                             self.logger.prn_inf("Software reset will be performed.")
 
+                        # Reconsume preamble events
+                        consume_preamble_events = True
+                        
                         # connect to the device
                         p = start_conn_process()
                     elif key == '__notify_conn_lost':
