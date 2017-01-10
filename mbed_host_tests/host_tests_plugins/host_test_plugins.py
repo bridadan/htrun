@@ -174,8 +174,6 @@ class HostTestPluginBase:
         @return Tuple with result (always True) and serial port read from mbed-ls
         """
         result = True
-        from sets import Set
-        bad_files = Set(['ASSERT.TXT', 'FAIL.TXT'])
 
         if target_id:
             # If serial port changed (check using mbed-ls), use new serial port
@@ -194,22 +192,8 @@ class HostTestPluginBase:
                     if 'serial_port' in mbeds_by_tid[target_id]:
                         if mbeds_by_tid[target_id]['serial_port']:
                             # Only assign if serial port is known (not None)
-                            items = Set([x.upper() for x in os.listdir(mbeds_by_tid[target_id]['mount_point'])])
-                            common_items = bad_files.intersection(items)
-                            for common_item in common_items:
-                                full_path = os.path.join(mbeds_by_tid[target_id]['mount_point'], common_item)
-                                self.print_plugin_info("FS_ERROR: Found %s"% (full_path))
-                                bad_file_contents = "[failed to read bad file]"
-                                with open(full_path, "r") as bad_file:
-                                    bad_file_contents = bad_file.read()
-                                self.print_plugin_info("FS_ERROR: Contents\n%s"% (bad_file_contents))
-                                os.remove(full_path)
-                            self.print_plugin_info("common_items: %s"% (common_items))
-                            if not common_items:
-                                new_serial_port = mbeds_by_tid[target_id]['serial_port']
-                                break
-                            else:
-                                raise Exception('Found bad files on mbed')
+                            new_serial_port = mbeds_by_tid[target_id]['serial_port']
+                            break
                 sleep(timeout_step)
 
             if new_serial_port != serial_port:
