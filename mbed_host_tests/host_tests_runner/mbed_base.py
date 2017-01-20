@@ -134,8 +134,14 @@ class Mbed:
                                 sleep(0.5)
                                 continue
 
-                        items = Set([x.upper() for x in os.listdir(mbeds_by_tid[target_id]['mount_point'])])
-                        common_items = bad_files.intersection(items)
+                        common_items = []
+                        try:
+                            items = Set([x.upper() for x in os.listdir(mbeds_by_tid[target_id]['mount_point'])])
+                            common_items = bad_files.intersection(items)
+                        except OSError as e:
+                            print "Failed to enumerate disk files, retrying"
+                            continue
+
                         for common_item in common_items:
                             full_path = os.path.join(mbeds_by_tid[target_id]['mount_point'], common_item)
                             print "FS_ERROR: Found %s"% (full_path)
