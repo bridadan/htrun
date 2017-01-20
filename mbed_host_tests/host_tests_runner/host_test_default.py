@@ -255,7 +255,33 @@ class DefaultTestSelector(DefaultTestSelectorBase):
                             result = True
                             break
 
-                if consume_preamble_events:
+                if key == '__reset_timeout':
+                    self.logger.prn_inf("Resetting test timeout.")
+                    start_time = time()
+                elif key == '__reset_dut':
+                    # Disconnect to avoid connection lost event
+                    dut_event_queue.put(('__host_test_finished', True, time()))
+                    p.join()
+
+                    if value == DefaultTestSelector.RESET_TYPE_SW_RST:
+                        self.logger.prn_inf("Performing software reset.")
+                        # Just disconnecting and re-connecting comm process will soft reset DUT
+                    elif value == DefaultTestSelector.RESET_TYPE_HW_RST:
+                        self.logger.prn_inf("Performing hard reset.")
+                        # request hardware reset
+                        self.mbed.hw_reset()
+                    else:
+                        self.logger.prn_err("Invalid reset type (%s). Supported types [%s]." %
+                                            (value, ", ".join([DefaultTestSelector.RESET_TYPE_HW_RST,
+                                                               DefaultTestSelector.RESET_TYPE_SW_RST])))
+                        self.logger.prn_inf("Software reset will be performed.")
+
+                    # Reconsume preamble events
+                    consume_preamble_events = True
+
+                    # connect to the device
+                    p = start_conn_process()
+                elif consume_preamble_events:
                     if key == '__timeout':
                         # Override default timeout for this event queue
                         start_time = time()
@@ -339,32 +365,6 @@ class DefaultTestSelector(DefaultTestSelectorBase):
                         # or if value is None, value will be retrieved from HostTest.result() method
                         self.logger.prn_inf("%s(%s)"% (key, str(value)))
                         result = value
-                    elif key == '__reset_timeout':
-                        self.logger.prn_inf("Resetting test timeout.")
-                        start_time = time()
-                    elif key == '__reset_dut':
-                        # Disconnect to avoid connection lost event
-                        dut_event_queue.put(('__host_test_finished', True, time()))
-                        p.join()
-
-                        if value == DefaultTestSelector.RESET_TYPE_SW_RST:
-                            self.logger.prn_inf("Performing software reset.")
-                            # Just disconnecting and re-connecting comm process will soft reset DUT
-                        elif value == DefaultTestSelector.RESET_TYPE_HW_RST:
-                            self.logger.prn_inf("Performing hard reset.")
-                            # request hardware reset
-                            self.mbed.hw_reset()
-                        else:
-                            self.logger.prn_err("Invalid reset type (%s). Supported types [%s]." %
-                                                (value, ", ".join([DefaultTestSelector.RESET_TYPE_HW_RST,
-                                                                   DefaultTestSelector.RESET_TYPE_SW_RST])))
-                            self.logger.prn_inf("Software reset will be performed.")
-
-                        # Reconsume preamble events
-                        consume_preamble_events = True
-                        
-                        # connect to the device
-                        p = start_conn_process()
                     elif key == '__notify_conn_lost':
                         # This event is sent by conn_process, DUT connection was lost
                         self.logger.prn_err(value)
