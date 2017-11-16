@@ -209,10 +209,9 @@ class Mbed:
                                         pooling_timeout=self.polling_timeout)
         return result
 
-    def hw_reset(self):
+    def power_cycle_reset(self):
         """
-        Performs hardware reset of target ned device.
-
+        Performs a reset by power cycling the device (requires additional hardware)
         :return:
         """
         device_info = {}
@@ -225,3 +224,12 @@ class Mbed:
             self.disk = device_info['mount_point']
         return result
 
+    def reset(self):
+        """
+        Performs a reset of the device using the serial break method
+        :return:
+        """
+        return ht_plugins.call_plugin('ResetMethod',
+                                        'default',
+                                        serial=self.serial,
+                                        target_id=self.target_id)

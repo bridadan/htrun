@@ -366,16 +366,19 @@ class DefaultTestSelector(DefaultTestSelectorBase):
                         self.logger.prn_inf("%s(%s)" % (key, str(value)))
                         result = value
                         event_queue.put(('__exit_event_queue', 0, time()))
+                    elif key == '__soft_reset_dut':
+                        # This event only resets the dut, not the host test
+                        dut_event_queue.put(('__reset_dut', True, time())
                     elif key == '__reset_dut':
                         # Disconnect to avoid connection lost event
                         dut_event_queue.put(('__host_test_finished', True, time()))
                         p.join()
 
                         if value == DefaultTestSelector.RESET_TYPE_SW_RST:
-                            self.logger.prn_inf("Performing software reset.")
-                            # Just disconnecting and re-connecting comm process will soft reset DUT
+                            self.logger.prn_inf("Performing reset.")
+                            self.mbed.reset()
                         elif value == DefaultTestSelector.RESET_TYPE_HW_RST:
-                            self.logger.prn_inf("Performing hard reset.")
+                            self.logger.prn_inf("Performing power cycle reset.")
                             # request hardware reset
                             self.mbed.hw_reset()
                         else:
