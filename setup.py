@@ -53,10 +53,7 @@ setup(name='mbed-host-tests',
             ["mbedhtrun=mbed_host_tests.mbedhtrun:main",
              "mbedflsh=mbed_host_tests.mbedflsh:main"],
       },
-      install_requires=["PySerial>=3.0",
-                        "PrettyTable>=0.7.2",
-                        "requests",
-                        "mbed-ls>=1.0.0",
-                        "pyOCD==0.12.0",
-                        "intelhex",
-                        "future"])
+      install_requires=[
+        "mbed-tools"
+      ]
+)
