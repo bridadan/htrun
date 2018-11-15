@@ -15,12 +15,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+from mbed_tools.test.host_tests.default_auto import *
 
-from mbed_host_tests import BaseHostTest
-
-
-class DefaultAuto(BaseHostTest):
-    """ Simple, basic host test's test runner waiting for serial port
-        output from MUT, no supervision over test running in MUT is executed.
-    """
-    pass
