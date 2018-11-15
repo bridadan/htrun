@@ -26,34 +26,18 @@ Write your own programs (import this package) or use 'mbedhtrun' command line to
 """
 
 
-import os
 import imp
-import inspect
-from os import listdir
-from os.path import isfile, join, abspath, basename
 import sys
 from optparse import OptionParser
 from optparse import SUPPRESS_HELP
-from mbed_host_tests import host_tests_plugins
-from mbed_host_tests.host_tests_registry import HostRegistry
-from mbed_host_tests.host_tests import BaseHostTest, event_callback
 
+from mbed_tools.test import *
 
-# Set the default baud rate
-DEFAULT_BAUD_RATE = 9600
 
 ###############################################################################
 # Functional interface for test supervisor registry
 ###############################################################################
 
-
-def get_plugin_caps(methods=None):
-    if not methods:
-        methods = ['CopyMethod', 'ResetMethod']
-    result = {}
-    for method in methods:
-        result[method] = host_tests_plugins.get_plugin_caps(method)
-    return result
 
 
 def init_host_test_cli_params():
